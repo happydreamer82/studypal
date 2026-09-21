@@ -38,6 +38,21 @@ nie im Code.
    - **`frage_stellen`** (aufgeklappt "Eigene Frage"): Eine eingegebene Frage.
 4. Die Antwort erscheint im Panel mit Hinweis auf die Quellseite.
 
+## Aussehen und Erledigt-Zustand
+
+Das Panel ist an die Model-Performance-App angelehnt (modellab-Theme:
+Tuerkis/Jade, Radien 8/10/16, Inter + IBM Plex Mono, Hell/Dunkel per
+`prefers-color-scheme`). Jede Frage-Antwort ist eine Karte; das Etikett
+(FRAGE/ANTWORT) steht in eigener Zeile, der Text darunter.
+
+Jede Karte hat einen Haken: angeklickt einklappt sie zu einer Zeile, damit
+man sieht, wo man steht, ohne die Beantworteten zu lesen. Der Zustand wird
+pro URL in `browser.storage.local` gemerkt und ueberlebt ein Neuladen.
+
+**Warum `color-mix()` nicht:** Der Firefox des Nutzers ist aelter als 113
+(kennt auch kein Side-Panel). `color-mix()` gibt es erst ab 113 — alle
+Farben sind deshalb feste Werte.
+
 **Warum kein Side-Panel:** Das Side-Panel-API (`side_panel`, Permission
 `sidePanel`) gibt es erst ab Firefox 113. Der Firefox hier erkennt es nicht
 (Manifest-Warnung), daher das Content-Script-Panel. Laeuft spaeter ein
