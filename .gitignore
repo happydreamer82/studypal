@@ -1,0 +1,13 @@
+# Geheimnisse
+.env
+.env.*
+!*.env.example
+
+# Protokolle und Daten
+logs/
+*.log
+data/
+
+# Editor
+.vscode/
+.idea/
