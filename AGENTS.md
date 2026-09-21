@@ -37,5 +37,5 @@ curl -s http://127.0.0.1:4000/v1/models -H "Authorization: Bearer <key>"
 ```
 
 Das Add-on selbst laeuft nur in Firefox: `about:debugging#/runtime/this-firefox`
-→ "Zuegiges Add-on laden" → `manifest.json` waehlen. Auf einer Webseite erscheint
-oben rechts die türkis leuchtende LED (Knopf "StudyPal oeffnen").
+→ "Zuegiges Add-on laden" → `manifest.json` waehlen. Das Panel oeffnet der
+Toolbar-Button des Browsers (alternativ Alt+Shift+S) — kein Knopf auf der Seite.

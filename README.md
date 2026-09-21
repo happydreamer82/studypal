@@ -10,11 +10,11 @@ Nichts zu bauen — plain HTML/JS/CSS, kein npm.
 
 1. Firefox oeffnen, `about:debugging#/runtime/this-firefox`
 2. "Zuegiges Add-on laden…" → `manifest.json` aus diesem Verzeichnis waehlen
-3. Auf eine Webseite gehen: oben rechts erscheint die türkis leuchtende
-   LED
-4. Knopf klicken → Panel oeffnet sich rechts
-   (alternativ **Alt+Shift+S** — oeffnet/schliesst das Panel auch, wenn die
-   Seite den Knopf verdeckt)
+3. Auf eine Webseite gehen
+4. **Toolbar-Button** des Add-ons klicken (Tuerkis-Punkt in der
+   Browser-Leiste) → Panel oeffnet sich rechts
+   (alternativ **Alt+Shift+S** — funktioniert auch, wenn die Seite eigene
+   Overlays zeigt)
 5. Im Panel unter **Einstellungen** den API-Key eintragen
    (aus `~/agenthub/config/agent-keys.env`) und speichern
 6. **"Frage beantworten"** klicken — das Modell findet die Frage(n), die
@@ -70,9 +70,10 @@ Die Fassade muss laufen (`19-fassade.sh`); sonst meldet das Panel den Fehler.
 curl -s http://127.0.0.1:4000/v1/models -H "Authorization: Bearer <key>"
 ```
 
-Funktionsnachweis des Add-ons selbst nur in Firefox: Seite oeffnen, die LED
-klicken, Frage stellen, Antwort im Panel. Interne Firefox-Seiten (`about:*`,
-PDFs, Web-Store) bekommen kein Content-Script und zeigen daher keinen Knopf.
+Funktionsnachweis des Add-ons selbst nur in Firefox: Seite oeffnen,
+Toolbar-Button klicken, Frage stellen, Antwort im Panel. Interne
+Firefox-Seiten (`about:*`, PDFs, Web-Store) bekommen kein Content-Script und
+zeigen daher kein Panel.
 
 ## Modelle
 

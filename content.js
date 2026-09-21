@@ -57,9 +57,6 @@
       --primary-soft: rgba(13,106,97,.12);
       --done-bg: #e4efe9;
       --done-border: #0a5038;
-      --led: #0d6a61;
-      --led-glow: rgba(13,106,97,.5);
-      --led-halo: rgba(13,106,97,.22);
       --r-sel: 8px;
       --r-field: 10px;
       --r-box: 16px;
@@ -81,45 +78,17 @@
         --primary-soft: rgba(115,224,209,.14);
         --done-bg: #16241d;
         --done-border: #45b88b;
-        --led: #73e0d1;
-        --led-glow: rgba(115,224,209,.65);
-        --led-halo: rgba(115,224,209,.3);
         color-scheme: dark;
       }
     }
 
     * { box-sizing: border-box; font-family: var(--font-sans); }
 
-    .knopf {
-      position: absolute; top: 12px; right: 12px;
-      width: 44px; height: 44px; border-radius: 50%;
-      border: 1px solid var(--base-300);
-      background: var(--base-100);
-      cursor: pointer; padding: 0;
-      box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 10px 28px -14px rgba(0,0,0,.22);
-      display: flex; align-items: center; justify-content: center;
-      transition: transform .1s;
-    }
-    .knopf:hover { transform: scale(1.06); }
-    /* Flache LED im Add-on-Tuerkis: einfarbiger Punkt + weicher Halo.
-       Kein Verlauf, kein Glanzpunkt, keine Kuppel — bewusst flach. */
-    .knopf .led {
-      width: 14px; height: 14px; border-radius: 50%;
-      background: var(--led);
-      box-shadow: 0 0 3px 1px var(--led-glow), 0 0 9px 2px var(--led-halo);
-      transition: filter .15s;
-    }
-    .knopf:hover .led { filter: brightness(1.15); }
-    /* Waehrend das Modell laeuft pulsiert die LED. */
-    .knopf.laden .led { animation: led-puls 1.1s ease-in-out infinite; }
-    @keyframes led-puls {
-      0%, 100% { filter: brightness(1); }
-      50% { filter: brightness(1.7); }
-    }
-
+    /* Kein Knopf mehr auf der Seite: Das Panel wird ueber den
+       Toolbar-Button des Browsers (oder Alt+Shift+S) geoeffnet. */
     .panel {
-      position: absolute; top: 62px; right: 12px;
-      width: 380px; max-height: calc(100vh - 84px);
+      position: absolute; top: 12px; right: 12px;
+      width: 380px; max-height: calc(100vh - 24px);
       overflow-y: auto;
       background: var(--base-100); color: var(--content);
       border: 1px solid var(--base-300); border-radius: var(--r-box);
@@ -255,10 +224,6 @@
   `;
 
   const html = `
-    <button class="knopf" title="StudyPal oeffnen" aria-label="StudyPal oeffnen">
-      <span class="led"></span>
-    </button>
-
     <section class="panel" hidden>
       <div class="kopf">
         <div class="kopf-titel">
@@ -404,7 +369,6 @@
   }
 
   // --- Referenzen --------------------------------------------------------
-  const knopf = shadow.querySelector(".knopf");
   const panel = shadow.querySelector(".panel");
   const schliessen = shadow.querySelector(".schliessen");
   const quelle = shadow.querySelector(".quelle");
@@ -423,7 +387,6 @@
   const autoFeld = shadow.querySelector(".auto-neu");
 
   // --- Panel oeffnen / schliessen ---------------------------------------
-  knopf.addEventListener("click", () => (panel.hidden = !panel.hidden));
   schliessen.addEventListener("click", () => (panel.hidden = true));
 
   // Host sicherstellen, damit er sichtbar bleibt. Zwei Probleme:
@@ -447,8 +410,8 @@
     }
   }
 
-  // Toolbar-Button des Add-ons: schaltet das Panel wie der Knopf auf der
-  // Seite — ueberlebt auch, wenn die Seite den Knopf verdeckt hat.
+  // Toolbar-Button des Add-ons: schaltet das Panel an/aus. Das ist der
+  // Hauptweg — unabhaengig von der Seite, die nichts davon sieht.
   browser.runtime.onMessage.addListener((nachricht) => {
     if (nachricht?.type === "panel_umschalten") {
       hostSichern();
@@ -456,8 +419,8 @@
     }
   });
 
-  // Tastenkuerzel: Alt+Shift+S oeffnet/schliesst das Panel — auch wenn die
-  // Seite den Knopf verdeckt oder entfernt hat.
+  // Tastenkuerzel: Alt+Shift+S oeffnet/schliesst das Panel — zweiter Weg
+  // neben dem Toolbar-Button, z. B. fuer die Hand auf der Tastatur.
   const TASTEN_KUERZEL = { alt: true, shift: true, buchstabe: "s" };
   window.addEventListener(
     "keydown",
@@ -575,7 +538,6 @@
   async function stellen(typ, frage) {
     beantwortenKnopf.disabled = true;
     eigeneKnopf.disabled = true;
-    knopf.classList.add("laden");
     antwort.innerHTML = "";
     quelle.hidden = true;
     status.textContent = "Seite wird gelesen und das Modell befragt …";
@@ -609,7 +571,6 @@
     } finally {
       beantwortenKnopf.disabled = false;
       eigeneKnopf.disabled = false;
-      knopf.classList.remove("laden");
     }
   }
 
