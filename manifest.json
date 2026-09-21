@@ -2,17 +2,11 @@
   "manifest_version": 3,
   "name": "SeitenFrager",
   "version": "0.1.0",
-  "description": "Stellt Fragen zur aktuellen Webseite und zeigt die Antwort des lokalen Modells im Side-Panel an.",
-  "permissions": ["storage", "sidePanel", "tabs"],
+  "description": "Stellt Fragen zur aktuellen Webseite und zeigt die Antwort des lokalen Modells in einem Panel rechts auf der Seite an.",
+  "permissions": ["storage"],
   "host_permissions": ["http://127.0.0.1:4000/*"],
   "background": {
-    "service_worker": "background.js"
-  },
-  "action": {
-    "default_title": "SeitenFrager oeffnen"
-  },
-  "side_panel": {
-    "default_path": "panel/panel.html"
+    "scripts": ["background.js"]
   },
   "content_scripts": [
     {

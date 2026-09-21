@@ -1,5 +1,9 @@
-// Kern des Add-ons: liest die aktuelle Seite, fragt das lokale Modell
-// ueber die Fassade ab und liefert die Antwort an das Side-Panel.
+// Kern des Add-ons: fragt das lokale Modell ueber die Fassade ab und
+// liefert die Antwort an das Panel auf der Seite.
+//
+// Das Panel selbst lebt im Content-Script (content.js) und schickt den
+// Seitentext gleich mit — der Hintergrund muss deshalb kein Tab mehr
+// anfragen.
 
 const STANDARD = {
   basis_url: "http://127.0.0.1:4000/v1",
@@ -9,35 +13,12 @@ const STANDARD = {
 
 const MAX_ANTWORT_TOKENS = 2048;
 
-// Das Panel ist immer auf dem aktuellen Pfad, egal wie es geoeffnet wurde.
-browser.sidePanel
-  .setOptions({ path: "panel/panel.html" })
-  .catch(() => {});
-
-// Der Werkzeugknopf oeffnet das Panel im aktuellen Tab.
-browser.action.onClicked.addListener((tab) => {
-  browser.sidePanel.open({ tabId: tab.id });
-});
-
 browser.runtime.onMessage.addListener((nachricht) => {
   if (nachricht?.type !== "frage_stellen") return;
-  return frageStellen(nachricht.frage);
+  return frageStellen(nachricht.frage, nachricht.seite);
 });
 
-async function frageStellen(frage) {
-  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id) throw new Error("Kein aktives Tab gefunden.");
-
-  let seite;
-  try {
-    seite = await browser.tabs.sendMessage(tab.id, { type: "seite_lesen" });
-  } catch {
-    throw new Error(
-      "Auf dieser Seite ist das Add-on nicht verfuegbar (interne Firefox-Seiten, PDFs, Web-Store)."
-    );
-  }
-  if (!seite?.text) throw new Error("Der Seitentext konnte nicht gelesen werden.");
-
+async function frageStellen(frage, seite) {
   const einstellungen = await browser.storage.local.get(STANDARD);
   if (!einstellungen.api_key) {
     throw new Error("Kein API-Key gesetzt. Im Panel unter 'Einstellungen' eintragen.");

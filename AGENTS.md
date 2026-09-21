@@ -5,10 +5,10 @@ wird bei jedem Zug mitbezahlt.
 
 ## Aufbau
 
-- `manifest.json` — Deklaration (MV3, Side-Panel, Content-Script)
-- `background.js` — liest die Seite, fragt das Modell ab, liefert ans Panel
-- `content.js` — extrahiert den sichtbaren Text des aktiven Tabs
-- `panel/` — Side-Panel (HTML/JS/CSS)
+- `manifest.json` — Deklaration (MV3, Content-Script, Hintergrund-Skript)
+- `background.js` — fragt das Modell ueber die Fassade ab, liefert ans Panel
+- `content.js` — baut das schwebende Panel rechts auf der Seite (Shadow-DOM),
+  liest den Seitentext, schickt Frage + Inhalt an den Hintergrund
 
 ## Regeln
 
@@ -17,7 +17,11 @@ wird bei jedem Zug mitbezahlt.
    nie direkt gegen einen Anbieter.
 3. Der API-Key steht nur im `browser.storage.local` des Nutzers,
    nie im Code oder im Repo.
-4. Deutsch, auch in Kommentaren.
+4. Das Panel lebt im Shadow-DOM: Seiten-CSS darf es nicht erreichen,
+   und Panel-Text darf nicht in den gelesenen Seitentext gelangen.
+5. Kein Side-Panel-API: der Firefox des Nutzers kennt es nicht.
+   Das Panel ist ein Content-Script-Element, kein Browser-Panel.
+6. Deutsch, auch in Kommentaren.
 
 ## Pruefen
 
@@ -27,4 +31,5 @@ curl -s http://127.0.0.1:4000/v1/models -H "Authorization: Bearer <key>"
 ```
 
 Das Add-on selbst laeuft nur in Firefox: `about:debugging#/runtime/this-firefox`
-→ "Zuegiges Add-on laden" → `manifest.json` waehlen.
+→ "Zuegiges Add-on laden" → `manifest.json` waehlen. Auf einer Webseite erscheint
+oben rechts der "❓"-Knopf.
