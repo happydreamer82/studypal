@@ -7,6 +7,10 @@
 // Hauptaktion "Frage beantworten": Das Modell findet die Frage(n), die AUF
 // der Seite stehen (z. B. ein Quiz), und beantwortet sie. "Eigene Frage"
 // ist ein Rueckfall, wenn man selbst etwas fragen will.
+//
+// Die Antwort kommt vom Modell als Markdown (z. B. **Frage:** / **Antwort:**).
+// renderAntwort() rendert das sicher (erst HTML-escapen, dann nur eigene
+// Tags einfuegen) und zeigt jede Frage-Antwort als eigene Karte.
 
 (() => {
   // Nur im obersten Frame; in Iframes waere das Panel falsch verankert.
@@ -34,68 +38,139 @@
   const shadow = host.attachShadow({ mode: "open" });
   shadow.innerHTML = `
     <style>
-      * { box-sizing: border-box; font-family: system-ui, sans-serif; }
+      :host {
+        --bg: #ffffff;
+        --fg: #1a1a1a;
+        --muted: #6b7280;
+        --border: #e5e7eb;
+        --card: #f9fafb;
+        --accent: #4a6cf7;
+        --accent-2: #6a5cf7;
+        --accent-fg: #ffffff;
+        --frage-bg: #eef2ff;
+        --frage-fg: #3730a3;
+        --antwort-bg: #ecfdf5;
+        --antwort-fg: #065f46;
+        --shadow: 0 10px 30px rgba(0,0,0,.16);
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :host {
+          --bg: #1b1e24;
+          --fg: #e5e7eb;
+          --muted: #9ca3af;
+          --border: #2f333b;
+          --card: #23262d;
+          --accent: #5b7cfa;
+          --accent-2: #7c6cf7;
+          --accent-fg: #ffffff;
+          --frage-bg: #2a2f45;
+          --frage-fg: #c3cbff;
+          --antwort-bg: #16301f;
+          --antwort-fg: #a7f3d0;
+          --shadow: 0 10px 30px rgba(0,0,0,.55);
+          color-scheme: dark;
+        }
+      }
+
+      * { box-sizing: border-box;
+          font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
 
       .knopf {
         position: absolute; top: 12px; right: 12px;
-        width: 40px; height: 40px; border-radius: 50%;
-        border: 1px solid #8884; background: #fff; color: #222;
-        font-size: 18px; cursor: pointer;
-        box-shadow: 0 2px 8px #0002;
+        width: 42px; height: 42px; border-radius: 50%;
+        border: 1px solid var(--border);
+        background: var(--bg); color: var(--fg);
+        font-size: 19px; cursor: pointer;
+        box-shadow: 0 2px 10px rgba(0,0,0,.2);
+        display: flex; align-items: center; justify-content: center;
+        transition: transform .1s;
       }
-      .knopf:hover { background: #f0f0f0; }
+      .knopf:hover { transform: scale(1.06); }
 
       .panel {
-        position: absolute; top: 60px; right: 12px;
-        width: 340px; max-height: calc(100vh - 80px);
-        overflow: auto;
-        background: #fff; color: #222;
-        border: 1px solid #8884; border-radius: 10px;
-        box-shadow: 0 8px 28px #0003;
-        padding: 12px;
-        display: flex; flex-direction: column; gap: 10px;
+        position: absolute; top: 62px; right: 12px;
+        width: 360px; max-height: calc(100vh - 84px);
+        overflow-y: auto;
+        background: var(--bg); color: var(--fg);
+        border: 1px solid var(--border); border-radius: 14px;
+        box-shadow: var(--shadow);
+        padding: 14px;
+        display: flex; flex-direction: column; gap: 12px;
         font-size: 14px;
       }
       .panel[hidden] { display: none; }
 
       header { display: flex; align-items: center; justify-content: space-between; }
-      h1 { font-size: 15px; margin: 0; }
+      h1 { font-size: 15px; margin: 0; font-weight: 700; letter-spacing: .2px;
+           display: flex; align-items: center; gap: 8px; }
+      h1::before { content: ""; width: 10px; height: 10px; border-radius: 3px;
+           background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
       .schliessen {
         border: none; background: none; cursor: pointer;
-        font-size: 16px; color: #666; padding: 2px 6px;
+        font-size: 16px; color: var(--muted); padding: 2px 8px; border-radius: 6px;
       }
+      .schliessen:hover { background: var(--card); color: var(--fg); }
 
       .quelle {
-        margin: 0; font-size: 12px; opacity: 0.7;
+        margin: 0; font-size: 12px; color: var(--muted);
         overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       }
       .quelle[hidden] { display: none; }
 
       button.haupt {
-        padding: 10px; border: none; border-radius: 6px;
-        font: inherit; font-weight: 600; background: #4a6cf7; color: #fff;
-        cursor: pointer;
+        padding: 11px; border: none; border-radius: 10px;
+        font: inherit; font-weight: 600; color: var(--accent-fg);
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        cursor: pointer; transition: transform .08s, filter .12s;
       }
-      button.haupt:disabled { opacity: 0.6; cursor: wait; }
+      button.haupt:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
+      button.haupt:disabled { opacity: .6; cursor: wait; }
 
-      .status { font-size: 13px; opacity: 0.8; margin: 0; }
+      .status { font-size: 13px; color: var(--muted); margin: 0; }
       .status[hidden] { display: none; }
 
-      .antwort { white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
+      .antwort { display: flex; flex-direction: column; gap: 10px; }
+      .antwort:empty { display: none; }
+      .antwort p { margin: 0; line-height: 1.5; }
+      .antwort code {
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: 4px; padding: 1px 5px; font-size: .92em;
+        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      }
+      .antwort ul { margin: 0; padding-left: 18px; line-height: 1.5; }
 
-      details { border-top: 1px solid #8884; padding-top: 8px; font-size: 13px; }
-      details summary { cursor: pointer; opacity: 0.85; }
-      details form { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
-      details label { display: flex; flex-direction: column; gap: 2px; }
+      .qa {
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: 10px; padding: 10px 12px;
+      }
+      .qa-zeile { display: flex; gap: 8px; align-items: flex-start; line-height: 1.5; }
+      .qa-zeile + .qa-zeile { margin-top: 8px; padding-top: 8px;
+        border-top: 1px dashed var(--border); }
+      .qa-text { flex: 1; }
+      .badge {
+        flex: none; font-size: 10px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: .4px; padding: 2px 7px; border-radius: 999px; margin-top: 1px;
+      }
+      .badge-frage { background: var(--frage-bg); color: var(--frage-fg); }
+      .badge-antwort { background: var(--antwort-bg); color: var(--antwort-fg); }
+
+      details { border-top: 1px solid var(--border); padding-top: 10px; font-size: 13px; }
+      details summary { cursor: pointer; color: var(--muted); user-select: none; padding: 2px 0; }
+      details summary:hover { color: var(--fg); }
+      details form { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+      details label { display: flex; flex-direction: column; gap: 3px; }
       details input, details textarea {
-        padding: 6px; border: 1px solid #8884; border-radius: 6px;
-        font: inherit; resize: vertical;
+        padding: 7px 9px; border: 1px solid var(--border); border-radius: 8px;
+        font: inherit; background: var(--card); color: var(--fg); resize: vertical;
       }
       details button {
-        padding: 6px; border: none; border-radius: 6px;
-        font: inherit; background: #8884; cursor: pointer;
+        padding: 8px; border: none; border-radius: 8px;
+        font: inherit; font-weight: 600; background: var(--accent); color: var(--accent-fg);
+        cursor: pointer;
       }
-      details button:disabled { opacity: 0.6; cursor: wait; }
+      details button:hover:not(:disabled) { filter: brightness(1.06); }
+      details button:disabled { opacity: .6; cursor: wait; }
     </style>
 
     <button class="knopf" title="SeitenFrager oeffnen" aria-label="SeitenFrager oeffnen">❓</button>
@@ -143,6 +218,65 @@
       </details>
     </section>
   `;
+
+  // --- Markdown sicher rendern ------------------------------------------
+  // Erst alle HTML-Zeichen escapen, dann nur eigene, sichere Tags einfuegen.
+  // So kann der Modell-Text kein HTML/JS in die Seite schmuggeln.
+  function esc(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function inline(s) {
+    // s ist bereits escaped; nur Fett und Inline-Code.
+    return s
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/`([^`]+)`/g, "<code>$1</code>");
+  }
+
+  // Erst escapen, dann Markdown-Formatierung — in dieser Reihenfolge,
+  // sonst wuerde Modell-HTML (z. B. <script>) ungefiltert durchgehen.
+  function md(s) {
+    return inline(esc(s));
+  }
+
+  // Antwort-Text in HTML: jede **Frage:**/**Antwort:**-Kombination wird
+  // eine Karte, der Rest ein Absatz (mit Listen- und Inline-Unterstuetzung).
+  function renderAntwort(text) {
+    const blöcke = text.split(/\n[ \t]*\n+/);
+    const out = [];
+    for (const block of blöcke) {
+      const zeilen = block.split("\n").filter((z) => z.trim() !== "");
+      if (zeilen.length === 0) continue;
+
+      const frageZeile = zeilen.find((z) => /^\*\*\s*Frage/i.test(z));
+      const antwortZeile = zeilen.find((z) => /^\*\*\s*Antwort/i.test(z));
+      if (frageZeile && antwortZeile) {
+        const f = frageZeile.replace(/^\*\*\s*Frage[^*]*\*\*\s*:?\s*/i, "");
+        const a = antwortZeile.replace(/^\*\*\s*Antwort[^*]*\*\*\s*:?\s*/i, "");
+        out.push(
+          '<div class="qa">' +
+            '<div class="qa-zeile"><span class="badge badge-frage">Frage</span>' +
+              '<span class="qa-text">' + md(f) + "</span></div>" +
+            '<div class="qa-zeile"><span class="badge badge-antwort">Antwort</span>' +
+              '<span class="qa-text">' + md(a) + "</span></div>" +
+          "</div>"
+        );
+        continue;
+      }
+
+      if (zeilen.length > 1 && zeilen.every((z) => /^\s*[-*]\s+/.test(z))) {
+        out.push(
+          "<ul>" +
+            zeilen.map((z) => "<li>" + md(z.replace(/^\s*[-*]\s+/, "")) + "</li>").join("") +
+            "</ul>"
+        );
+        continue;
+      }
+
+      out.push("<p>" + zeilen.map(md).join("<br>") + "</p>");
+    }
+    return out.join("");
+  }
 
   // --- Referenzen --------------------------------------------------------
   const knopf = shadow.querySelector(".knopf");
@@ -213,7 +347,7 @@
         frage,
         seite: seiteLesen(),
       });
-      antwort.textContent = ergebnis.antwort;
+      antwort.innerHTML = renderAntwort(ergebnis.antwort);
       quelle.textContent = `Quelle: ${ergebnis.titel}`;
       quelle.hidden = false;
       status.hidden = true;
