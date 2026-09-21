@@ -426,10 +426,21 @@
   knopf.addEventListener("click", () => (panel.hidden = !panel.hidden));
   schliessen.addEventListener("click", () => (panel.hidden = true));
 
+  // Host sicherstellen: Falls die Seite ihn aus dem DOM ENTFERNT hat (viele
+  // SPAs raeumen fremde Knoten weg), neu anhaengen. Falls neue Elemente
+  // HINTER ihm liegen (in der Reihenfolge ueber uns), ans Ende ziehen.
+  // Ohne die parentNode-Pruefung wirft beides einen Fehler, wenn der Host
+  // losgeloescht ist — dann waere das Panel fuer immer weg.
+  function hostSichern() {
+    if (!host.parentNode) {
+      (document.body ?? document.documentElement).appendChild(host);
+    } else if (host.nextSibling) {
+      host.parentNode.appendChild(host);
+    }
+  }
+
   // Tastenkuerzel: Alt+Shift+S oeffnet/schliesst das Panel — auch wenn die
-  // Seite den Knopf verdeckt. Beim Umschalten wird der Host ans Ende des
-  // Body gezogen: Seiten, die spaeter eigene fixed-Elemente mit maximalem
-  // z-index einfuegen, sonst in der DOM-Reihenfolge ueber uns liegen.
+  // Seite den Knopf verdeckt oder entfernt hat.
   const TASTEN_KUERZEL = { alt: true, shift: true, buchstabe: "s" };
   window.addEventListener(
     "keydown",
@@ -443,7 +454,7 @@
       ) {
         e.preventDefault();
         e.stopPropagation();
-        host.parentNode.appendChild(host);
+        hostSichern();
         panel.hidden = !panel.hidden;
       }
     },
@@ -750,11 +761,9 @@
   // wir, damit das nicht bei jedem Tick feuert.
   let letzterSichtbar = normSeitentext();
   setInterval(() => {
-    // SPA-Abwehr: Wenn die Seite nach uns eigene (fixed-)Elemente ins DOM
-    // gesetzt hat, liegen wir in der Reihenfolge unter ihr und werden
-    // verdeckt. Dann den Host neu ans Ende ziehen. Nur wenn noetig, damit
-    // das den Seitenfluss nicht staendig stoert.
-    if (host.nextSibling) host.parentNode.appendChild(host);
+    // SPA-Abwehr: Host sichern (neu anhaengen, falls die Seite ihn entfernt
+    // hat; ans Ende ziehen, falls neue Elemente ueber uns liegen).
+    hostSichern();
 
     const fp = normSeitentext();
     const diff = aenderungsgroesse(letzterSichtbar, fp);
