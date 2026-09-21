@@ -26,11 +26,12 @@
     basis_url: "http://127.0.0.1:4000/v1",
     modell: "agent",
     api_key: "",
+    auto_neu: true,
   };
 
   // --- Geruest: Host-Element + Shadow-DOM --------------------------------
   const host = document.createElement("div");
-  host.id = "seitenfrager-host";
+  host.id = "assistent-host";
   // Inline-Styles, damit sie gegen Seiten-CSS gewinnen (außer !important).
   host.style.position = "fixed";
   host.style.top = "0";
@@ -56,6 +57,11 @@
       --primary-soft: rgba(13,106,97,.12);
       --done-bg: #e4efe9;
       --done-border: #0a5038;
+      --led: #0d6a61;
+      --led-hell: #2a9d92;
+      --led-tief: #063f39;
+      --led-glow: rgba(13,106,97,.5);
+      --led-halo: rgba(13,106,97,.22);
       --r-sel: 8px;
       --r-field: 10px;
       --r-box: 16px;
@@ -77,6 +83,11 @@
         --primary-soft: rgba(115,224,209,.14);
         --done-bg: #16241d;
         --done-border: #45b88b;
+        --led: #73e0d1;
+        --led-hell: #b8f5ec;
+        --led-tief: #0d6a61;
+        --led-glow: rgba(115,224,209,.65);
+        --led-halo: rgba(115,224,209,.3);
         color-scheme: dark;
       }
     }
@@ -85,15 +96,38 @@
 
     .knopf {
       position: absolute; top: 12px; right: 12px;
-      width: 42px; height: 42px; border-radius: 50%;
+      width: 44px; height: 44px; border-radius: 50%;
       border: 1px solid var(--base-300);
-      background: var(--base-100); color: var(--content);
-      font-size: 19px; cursor: pointer;
+      background: var(--base-100);
+      cursor: pointer; padding: 0;
       box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 10px 28px -14px rgba(0,0,0,.22);
       display: flex; align-items: center; justify-content: center;
       transition: transform .1s;
     }
     .knopf:hover { transform: scale(1.06); }
+    /* 3D-LED im Add-on-Tuerkis: Glanzpunkt oben links, Kuppel-Verlauf,
+       eingelassener Rand und Neon-Halo drumherum. */
+    .knopf .led {
+      width: 22px; height: 22px; border-radius: 50%;
+      background:
+        radial-gradient(circle at 32% 28%,
+          rgba(255,255,255,.95) 0%, rgba(255,255,255,.35) 22%, rgba(255,255,255,0) 45%),
+        radial-gradient(circle at 50% 55%,
+          var(--led-hell) 0%, var(--led) 55%, var(--led-tief) 100%);
+      box-shadow:
+        inset 0 -2px 4px rgba(0,0,0,.35),
+        inset 0 1px 2px rgba(255,255,255,.35),
+        0 0 6px 1px var(--led-glow),
+        0 0 16px 4px var(--led-halo);
+      transition: filter .15s;
+    }
+    .knopf:hover .led { filter: brightness(1.18); }
+    /* Waehrend das Modell laeuft pulsiert die LED. */
+    .knopf.laden .led { animation: led-puls 1.1s ease-in-out infinite; }
+    @keyframes led-puls {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.7); }
+    }
 
     .panel {
       position: absolute; top: 62px; right: 12px;
@@ -200,9 +234,12 @@
                       color: var(--base-100); }
     .qa.done .qa-text { opacity: .8; }
 
-    details { border-top: 1px solid var(--base-300); padding-top: 10px; font-size: 13px; margin-top: 2px; }
+    details { border-top: 1px solid var(--base-300); padding: 10px 16px 14px; font-size: 13px; }
     details summary { cursor: pointer; color: var(--content); opacity: .75; user-select: none; padding: 2px 0; }
     details summary:hover { opacity: 1; }
+    /* Checkbox-Zeile: waagerecht, nicht wie die anderen Labels gestapelt. */
+    details .auto-zeile { flex-direction: row; align-items: center; gap: 8px; }
+    details .auto-zeile input { width: 16px; height: 16px; }
     details form { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
     details label { display: flex; flex-direction: column; gap: 3px; }
     details input, details textarea {
@@ -219,13 +256,15 @@
   `;
 
   const html = `
-    <button class="knopf" title="SeitenFrager oeffnen" aria-label="SeitenFrager oeffnen">❓</button>
+    <button class="knopf" title="Assistent oeffnen" aria-label="Assistent oeffnen">
+      <span class="led"></span>
+    </button>
 
     <section class="panel" hidden>
       <div class="kopf">
         <div class="kopf-titel">
-          <span class="eyebrow">Assistent</span>
-          <h1>SeitenFrager</h1>
+          <span class="eyebrow">Lokales Modell</span>
+          <h1>Assistent</h1>
         </div>
         <button class="schliessen" title="Schliessen" aria-label="Schliessen">✕</button>
       </div>
@@ -263,6 +302,10 @@
           </label>
           <label>Modell-Adresse
             <input type="text" class="basis-url" placeholder="http://127.0.0.1:4000/v1">
+          </label>
+          <label class="auto-zeile">
+            <input type="checkbox" class="auto-neu">
+            <span>Automatisch bei Seitenwechsel</span>
           </label>
           <button type="submit">Speichern</button>
           <p class="status" id="status-ein" hidden></p>
@@ -374,6 +417,7 @@
   const modellFeld = shadow.querySelector(".modell");
   const basisFeld = shadow.querySelector(".basis-url");
   const einstellungenStatus = shadow.querySelector("#status-ein");
+  const autoFeld = shadow.querySelector(".auto-neu");
 
   // --- Panel oeffnen / schliessen ---------------------------------------
   knopf.addEventListener("click", () => (panel.hidden = !panel.hidden));
@@ -384,6 +428,7 @@
     keyFeld.value = e.api_key ?? "";
     modellFeld.value = e.modell ?? "";
     basisFeld.value = e.basis_url ?? "";
+    autoFeld.checked = e.auto_neu ?? true;
   });
 
   einstellungenFormular.addEventListener("submit", async (ereignis) => {
@@ -392,6 +437,7 @@
       api_key: keyFeld.value.trim(),
       modell: modellFeld.value.trim() || STANDARD.modell,
       basis_url: basisFeld.value.trim() || STANDARD.basis_url,
+      auto_neu: autoFeld.checked,
     });
     einstellungenStatus.textContent = "Gespeichert.";
     einstellungenStatus.hidden = false;
@@ -457,6 +503,7 @@
   async function stellen(typ, frage) {
     beantwortenKnopf.disabled = true;
     eigeneKnopf.disabled = true;
+    knopf.classList.add("laden");
     antwort.innerHTML = "";
     quelle.hidden = true;
     status.textContent = "Seite wird gelesen und das Modell befragt …";
@@ -481,6 +528,7 @@
     } finally {
       beantwortenKnopf.disabled = false;
       eigeneKnopf.disabled = false;
+      knopf.classList.remove("laden");
     }
   }
 
@@ -493,4 +541,83 @@
     const frage = eigeneFeld.value.trim();
     if (frage) stellen("frage_stellen", frage);
   });
+
+  // --- Automatisch neu laden ---------------------------------------------
+  // Das Add-on merkt, wenn sich der Inhalt der Seite aendert (z. B. die
+  // naechste Quiz-Frage nach "Weiter") oder die URL wechselt, und fragt das
+  // Modell von selbst ab — statt jedes Mal auf "Frage beantworten" zu klicken.
+  //
+  // Drei Schutzer, damit es nicht bei jeder winzigen Aenderung feuert:
+  //   1. Debounce: erst 1 s nach der letzten Aenderung.
+  //   2. Groesse: nur wenn sich ein groesserer Textbereich geaendert hat
+  //      (eine neue Frage), nicht ein paar Zeichen (Uhr, Spinner).
+  //   3. Raten: maximal ein Neuladen alle 4 s.
+  const DEBOUNCE_MS = 1000;
+  const MIN_ABSTAND_MS = 4000;
+  const MIN_GROESSE = 20;
+  const START_VERZOEGERUNG_MS = 1500;
+
+  let autoTimer = null;
+  let letztesNeuladen = 0;
+  let letzteUrl = location.href;
+  // Startzustand merken, damit der Beobachter nicht auf das eigene Laden feuert.
+  let letzterFingerabdruck = (document.body?.innerText ?? "").replace(/\s+/g, " ").trim();
+
+  function fingerabdruck() {
+    // Sichtbarer Text, Leerraum normalisiert — stabil genug zum Vergleichen.
+    return (document.body?.innerText ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  // Groesse des geaenderten Textbereichs: laenge des Mittelstuecks, das sich
+  // zwischen zwei Fingerabdruecken unterscheidet (Praefix/Suffix ausgeklammert).
+  function aenderungsgroesse(a, b) {
+    if (a === b) return 0;
+    const laengeA = a.length, laengeB = b.length;
+    const grenze = Math.min(laengeA, laengeB);
+    let vorne = 0;
+    while (vorne < grenze && a[vorne] === b[vorne]) vorne++;
+    let hinten = 0;
+    while (hinten < grenze - vorne && a[laengeA - 1 - hinten] === b[laengeB - 1 - hinten]) hinten++;
+    return Math.max(laengeA, laengeB) - vorne - hinten;
+  }
+
+  async function autoNeuladen(zwang) {
+    const e = await browser.storage.local.get(["auto_neu", "api_key"]);
+    if (!e.auto_neu || !e.api_key || beantwortenKnopf.disabled) return;
+    const jetzt = Date.now();
+    if (jetzt - letztesNeuladen < MIN_ABSTAND_MS) return;
+    if (!zwang) {
+      const neu = fingerabdruck();
+      const groesse = aenderungsgroesse(letzterFingerabdruck, neu);
+      letzterFingerabdruck = neu;
+      if (groesse < MIN_GROESSE) return;
+    }
+    letztesNeuladen = jetzt;
+    stellen("seite_fragen");
+  }
+
+  // In-Page-Aenderungen (z. B. "Weiter" im Quiz) beobachten. Das Panel selbst
+  // liegt im Shadow-DOM und loest den Beobachter nicht aus.
+  const beobachter = new MutationObserver(() => {
+    if (autoTimer) clearTimeout(autoTimer);
+    autoTimer = setTimeout(() => autoNeuladen(false), DEBOUNCE_MS);
+  });
+  beobachter.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+  // URL-Wechsel: pushState/replaceState feuert kein Event, daher kurz abfragen.
+  const urlPruefen = () => {
+    if (location.href !== letzteUrl) {
+      letzteUrl = location.href;
+      autoNeuladen(true);
+    }
+  };
+  window.addEventListener("popstate", urlPruefen);
+  window.addEventListener("hashchange", urlPruefen);
+  setInterval(urlPruefen, 800);
+
+  // Einmalig beim Oeffnen: kurz warten, bis die Seite steht, dann automatisch
+  // die Frage beantworten — ohne Klick. Das Raten-Limit ist zu diesem Zeitpunkt
+  // noch offen (letztesNeuladen = 0), es sei denn, der Beobachter hat schon
+  // geladen — dann ueberlaesst es das dem.
+  setTimeout(() => autoNeuladen(true), START_VERZOEGERUNG_MS);
 })();

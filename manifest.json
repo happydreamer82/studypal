@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "SeitenFrager",
+  "name": "Assistent",
   "version": "0.1.0",
   "description": "Stellt Fragen zur aktuellen Webseite und zeigt die Antwort des lokalen Modells in einem Panel rechts auf der Seite an.",
   "permissions": ["storage"],

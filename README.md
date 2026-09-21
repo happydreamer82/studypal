@@ -1,4 +1,4 @@
-# seitenfrager
+# Assistent (Verzeichnis: seitenfrager)
 
 Firefox-Add-on: Die Frage(n), die auf einer Webseite stehen (z. B. ein
 Quiz), werden vom lokalen Modell gefunden und beantwortet — die Antwort
@@ -10,7 +10,8 @@ Nichts zu bauen — plain HTML/JS/CSS, kein npm.
 
 1. Firefox oeffnen, `about:debugging#/runtime/this-firefox`
 2. "Zuegiges Add-on laden…" → `manifest.json` aus diesem Verzeichnis waehlen
-3. Auf eine Webseite gehen: oben rechts erscheint ein "❓"-Knopf
+3. Auf eine Webseite gehen: oben rechts erscheint die türkis leuchtende
+   LED
 4. Knopf klicken → Panel oeffnet sich rechts
 5. Im Panel unter **Einstellungen** den API-Key eintragen
    (aus `~/agenthub/config/agent-keys.env`) und speichern
@@ -67,7 +68,7 @@ Die Fassade muss laufen (`19-fassade.sh`); sonst meldet das Panel den Fehler.
 curl -s http://127.0.0.1:4000/v1/models -H "Authorization: Bearer <key>"
 ```
 
-Funktionsnachweis des Add-ons selbst nur in Firefox: Seite oeffnen, "❓"
+Funktionsnachweis des Add-ons selbst nur in Firefox: Seite oeffnen, die LED
 klicken, Frage stellen, Antwort im Panel. Interne Firefox-Seiten (`about:*`,
 PDFs, Web-Store) bekommen kein Content-Script und zeigen daher keinen Knopf.
 
