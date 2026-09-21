@@ -2,7 +2,11 @@
 //
 // Das Panel lebt in einem Shadow-DOM: Die Seite kann es nicht per CSS
 // ueberschreiben, und der Panel-Text (Frage, Antwort) taucht nicht im
-// Seitentext auf, den wir dem Modell schicken.
+// gelesenen Seitentext auf, den wir dem Modell schicken.
+//
+// Hauptaktion "Frage beantworten": Das Modell findet die Frage(n), die AUF
+// der Seite stehen (z. B. ein Quiz), und beantwortet sie. "Eigene Frage"
+// ist ein Rueckfall, wenn man selbst etwas fragen will.
 
 (() => {
   // Nur im obersten Frame; in Iframes waere das Panel falsch verankert.
@@ -67,25 +71,12 @@
       }
       .quelle[hidden] { display: none; }
 
-      form { display: flex; flex-direction: column; gap: 8px; }
-      textarea {
-        width: 100%; padding: 8px; border: 1px solid #8884;
-        border-radius: 6px; font: inherit; resize: vertical;
-      }
       button.haupt {
-        padding: 8px; border: none; border-radius: 6px;
+        padding: 10px; border: none; border-radius: 6px;
         font: inherit; font-weight: 600; background: #4a6cf7; color: #fff;
         cursor: pointer;
       }
       button.haupt:disabled { opacity: 0.6; cursor: wait; }
-
-      .knopfleiste { display: flex; gap: 8px; }
-      .knopfleiste .haupt { flex: 1; }
-      button.neben {
-        padding: 8px; border: 1px solid #8884; border-radius: 6px;
-        font: inherit; background: #fff; color: #222; cursor: pointer;
-      }
-      button.neben:disabled { opacity: 0.6; cursor: wait; }
 
       .status { font-size: 13px; opacity: 0.8; margin: 0; }
       .status[hidden] { display: none; }
@@ -93,16 +84,18 @@
       .antwort { white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
 
       details { border-top: 1px solid #8884; padding-top: 8px; font-size: 13px; }
-      details form { gap: 6px; }
+      details summary { cursor: pointer; opacity: 0.85; }
+      details form { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
       details label { display: flex; flex-direction: column; gap: 2px; }
-      details input {
+      details input, details textarea {
         padding: 6px; border: 1px solid #8884; border-radius: 6px;
-        font: inherit;
+        font: inherit; resize: vertical;
       }
       details button {
         padding: 6px; border: none; border-radius: 6px;
         font: inherit; background: #8884; cursor: pointer;
       }
+      details button:disabled { opacity: 0.6; cursor: wait; }
     </style>
 
     <button class="knopf" title="SeitenFrager oeffnen" aria-label="SeitenFrager oeffnen">❓</button>
@@ -115,17 +108,21 @@
 
       <p class="quelle" hidden></p>
 
-      <form class="frage">
-        <textarea rows="3" placeholder="Frage zur aktuellen Seite, z. B. 'Was kostet das Angebot?'" required></textarea>
-        <div class="knopfleiste">
-          <button class="haupt" type="submit">Fragen</button>
-          <button class="neben" type="button"
-            title="Seite ohne eigene Frage zusammenfassen">Zusammenfassen</button>
-        </div>
-      </form>
+      <button class="haupt" id="beantworten"
+        title="Die Frage(n) auf dieser Seite finden und beantworten">
+        Frage beantworten
+      </button>
 
       <p class="status" hidden></p>
       <div class="antwort"></div>
+
+      <details>
+        <summary>Eigene Frage stellen</summary>
+        <form class="eigene">
+          <textarea rows="2" placeholder="Eigene Frage zur Seite…"></textarea>
+          <button type="submit">Fragen</button>
+        </form>
+      </details>
 
       <details>
         <summary>Einstellungen</summary>
@@ -152,11 +149,12 @@
   const panel = shadow.querySelector(".panel");
   const schliessen = shadow.querySelector(".schliessen");
   const quelle = shadow.querySelector(".quelle");
-  const frageFormular = shadow.querySelector("form.frage");
-  const frageFeld = shadow.querySelector("form.frage textarea");
-  const sendenKnopf = shadow.querySelector("form.frage button");
+  const beantwortenKnopf = shadow.querySelector("#beantworten");
   const status = shadow.querySelector(".panel > .status");
   const antwort = shadow.querySelector(".antwort");
+  const eigeneFormular = shadow.querySelector("form.eigene");
+  const eigeneFeld = shadow.querySelector("form.eigene textarea");
+  const eigeneKnopf = shadow.querySelector("form.eigene button");
   const einstellungenFormular = shadow.querySelector("form.einstellungen");
   const keyFeld = shadow.querySelector(".api-key");
   const modellFeld = shadow.querySelector(".modell");
@@ -196,15 +194,14 @@
     };
   }
 
-  // --- Frage stellen -----------------------------------------------------
+  // --- Anfrage an das Modell --------------------------------------------
   // Beide Wege nutzen denselben Ablauf: Seite lesen, an den Hintergrund
-  // schicken, Antwort anzeigen. "Zusammenfassen" stellt nur eine feste
-  // Frage, damit man nichts tippen muss.
-  const zusammenfassenKnopf = shadow.querySelector("button.neben");
-
-  async function stellen(frage) {
-    sendenKnopf.disabled = true;
-    zusammenfassenKnopf.disabled = true;
+  // schicken, Antwort anzeigen. Der Message-Typ waehlt, ob das Modell die
+  // Frage auf der Seite findet ("seite_fragen") oder eine eingegebene
+  // beantwortet ("frage_stellen").
+  async function stellen(typ, frage) {
+    beantwortenKnopf.disabled = true;
+    eigeneKnopf.disabled = true;
     antwort.textContent = "";
     quelle.hidden = true;
     status.textContent = "Seite wird gelesen und das Modell befragt …";
@@ -212,7 +209,7 @@
 
     try {
       const ergebnis = await browser.runtime.sendMessage({
-        type: "frage_stellen",
+        type: typ,
         frage,
         seite: seiteLesen(),
       });
@@ -224,18 +221,18 @@
       status.textContent = `Fehler: ${fehler.message ?? fehler}`;
       status.hidden = false;
     } finally {
-      sendenKnopf.disabled = false;
-      zusammenfassenKnopf.disabled = false;
+      beantwortenKnopf.disabled = false;
+      eigeneKnopf.disabled = false;
     }
   }
 
-  frageFormular.addEventListener("submit", (ereignis) => {
-    ereignis.preventDefault();
-    const frage = frageFeld.value.trim();
-    if (frage) stellen(frage);
-  });
+  // Hauptaktion: Frage(n) auf der Seite finden und beantworten.
+  beantwortenKnopf.addEventListener("click", () => stellen("seite_fragen"));
 
-  zusammenfassenKnopf.addEventListener("click", () => {
-    stellen("Fasse den Inhalt dieser Webseite in wenigen, klaren Sätzen zusammen.");
+  // Rueckfall: eigene Frage zur Seite.
+  eigeneFormular.addEventListener("submit", (ereignis) => {
+    ereignis.preventDefault();
+    const frage = eigeneFeld.value.trim();
+    if (frage) stellen("frage_stellen", frage);
   });
 })();

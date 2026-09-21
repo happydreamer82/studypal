@@ -8,7 +8,13 @@ wird bei jedem Zug mitbezahlt.
 - `manifest.json` — Deklaration (MV3, Content-Script, Hintergrund-Skript)
 - `background.js` — fragt das Modell ueber die Fassade ab, liefert ans Panel
 - `content.js` — baut das schwebende Panel rechts auf der Seite (Shadow-DOM),
-  liest den Seitentext, schickt Frage + Inhalt an den Hintergrund
+  liest den Seitentext, schickt ihn an den Hintergrund
+
+## Zweck
+
+Das Add-on findet die Frage(n), die AUF der Seite stehen (z. B. ein Quiz),
+und laesst sie vom lokalen Modell beantworten. Hauptknopf "Frage
+beantworten" (`seite_fragen`); Rueckfall "Eigene Frage" (`frage_stellen`).
 
 ## Regeln
 
