@@ -58,8 +58,6 @@
       --done-bg: #e4efe9;
       --done-border: #0a5038;
       --led: #0d6a61;
-      --led-hell: #2a9d92;
-      --led-tief: #063f39;
       --led-glow: rgba(13,106,97,.5);
       --led-halo: rgba(13,106,97,.22);
       --r-sel: 8px;
@@ -84,8 +82,6 @@
         --done-bg: #16241d;
         --done-border: #45b88b;
         --led: #73e0d1;
-        --led-hell: #b8f5ec;
-        --led-tief: #0d6a61;
         --led-glow: rgba(115,224,209,.65);
         --led-halo: rgba(115,224,209,.3);
         color-scheme: dark;
@@ -105,23 +101,15 @@
       transition: transform .1s;
     }
     .knopf:hover { transform: scale(1.06); }
-    /* 3D-LED im Add-on-Tuerkis: Glanzpunkt oben links, Kuppel-Verlauf,
-       eingelassener Rand und Neon-Halo drumherum. */
+    /* Flache LED im Add-on-Tuerkis: einfarbiger Punkt + weicher Halo.
+       Kein Verlauf, kein Glanzpunkt, keine Kuppel — bewusst flach. */
     .knopf .led {
-      width: 22px; height: 22px; border-radius: 50%;
-      background:
-        radial-gradient(circle at 32% 28%,
-          rgba(255,255,255,.95) 0%, rgba(255,255,255,.35) 22%, rgba(255,255,255,0) 45%),
-        radial-gradient(circle at 50% 55%,
-          var(--led-hell) 0%, var(--led) 55%, var(--led-tief) 100%);
-      box-shadow:
-        inset 0 -2px 4px rgba(0,0,0,.35),
-        inset 0 1px 2px rgba(255,255,255,.35),
-        0 0 6px 1px var(--led-glow),
-        0 0 16px 4px var(--led-halo);
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--led);
+      box-shadow: 0 0 3px 1px var(--led-glow), 0 0 9px 2px var(--led-halo);
       transition: filter .15s;
     }
-    .knopf:hover .led { filter: brightness(1.18); }
+    .knopf:hover .led { filter: brightness(1.15); }
     /* Waehrend das Modell laeuft pulsiert die LED. */
     .knopf.laden .led { animation: led-puls 1.1s ease-in-out infinite; }
     @keyframes led-puls {
@@ -169,7 +157,10 @@
     }
     .quelle[hidden] { display: none; }
 
-    .inhalt { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+    /* Block statt Flex: in aelterem Firefox ueberlappen sich verschachtelte
+       Flex-Spalten. Block-Layout mit Margins ist hier robuster. */
+    .inhalt { padding: 14px 16px; }
+    .inhalt > *:not(:first-child) { margin-top: 12px; }
 
     button.haupt {
       padding: 11px; border: none; border-radius: var(--r-sel);
@@ -190,8 +181,12 @@
     }
     .fortschritt[hidden] { display: none; }
 
-    .antwort { display: flex; flex-direction: column; gap: 10px; }
+    /* Block statt Flex: In aelterem Firefox ueberlappen sich die Kindelemente
+       einer verschachtelten Flex-Spalte (Intro + erste Karte). Block-Layout
+       mit Abstaenden ueber Margins ist hier robuster. */
+    .antwort { display: block; }
     .antwort:empty { display: none; }
+    .antwort > *:not(:first-child) { margin-top: 10px; }
     .antwort > p { margin: 0; line-height: 1.5; }
     .antwort code {
       background: var(--base-200); border: 1px solid var(--base-300);
@@ -216,15 +211,19 @@
     .qa-text { font-size: 14px; line-height: 1.5; margin-top: 4px; }
     .qa-antwort { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--base-300); }
 
-    .done {
+    /* Wichtig: .done hier ist der HAKEN-Knopf, kein Zustand. Die erledigte
+       KARTHE heisst .qa.done (beide Klassen auf EINEM Element). Deshalb die
+       Selektoren auf ".qa .done" einschränken — sonst würde die Regel auch
+       die KARTHE treffen und sie zu einem 24x24-Flex-Box zusammenklappen. */
+    .qa .done {
       flex: none; width: 24px; height: 24px; border-radius: 50%;
       border: 1px solid var(--base-300); background: var(--base-100);
       color: var(--content); cursor: pointer; opacity: .5;
       display: flex; align-items: center; justify-content: center;
       transition: opacity .12s, background .12s, color .12s;
     }
-    .done:hover { opacity: 1; }
-    .done svg { width: 14px; height: 14px; }
+    .qa .done:hover { opacity: 1; }
+    .qa .done svg { width: 14px; height: 14px; }
 
     /* Erledigt: Karte einklappt zu einer Zeile, Antwort verschwindet. */
     .qa.done { border-color: var(--done-border); background: var(--done-bg); }
@@ -469,6 +468,27 @@
     forschritt.hidden = false;
   }
 
+  // Eine Karte per Frage-Schluessel als erledigt / nicht erledigt setzen und
+  // den Fortschritt aktualisieren. Wird vom manuellen Haken UND vom
+  // Auto-Markieren (Frage wurde auf der Seite beantwortet) genutzt.
+  function setzeErledigt(key, neu) {
+    const karte = [...antwort.querySelectorAll(".qa")].find((el) => el.dataset.frage === key);
+    if (!karte) return;
+    karte.classList.toggle("done", neu);
+    karte.querySelector(".done").setAttribute("aria-pressed", neu ? "true" : "false");
+    forschrittAktualisieren(antwort.querySelectorAll(".qa").length);
+  }
+
+  // Alle aktuell erledigten Karten pro URL in storage.local schreiben.
+  function speichereErledigt() {
+    const url = location.href;
+    const erledigt = [...antwort.querySelectorAll(".qa.done")].map((el) => el.dataset.frage);
+    browser.storage.local.get("erledigt").then((s) => {
+      const speicher = s.erledigt ?? {};
+      browser.storage.local.set({ erledigt: { ...speicher, [url]: erledigt } });
+    });
+  }
+
   async function erledigtVerwalten() {
     const karten = [...antwort.querySelectorAll(".qa")];
     forschrittAktualisieren(karten.length);
@@ -481,18 +501,14 @@
     for (const karte of karten) {
       const key = karte.dataset.frage;
       const knopf2 = karte.querySelector(".done");
-      if (erledigt.has(key)) karte.classList.add("done");
-      knopf2.setAttribute("aria-pressed", karte.classList.contains("done") ? "true" : "false");
-      knopf2.addEventListener("click", () => {
-        const neu = karte.classList.toggle("done");
-        knopf2.setAttribute("aria-pressed", neu ? "true" : "false");
-        if (neu) erledigt.add(key);
-        else erledigt.delete(key);
-        forschrittAktualisieren(karten.length);
-        browser.storage.local.set({ erledigt: { ...speicher, [url]: [...erledigt] } });
-      });
+      const ist = erledigt.has(key);
+      karte.classList.toggle("done", ist);
+      knopf2.setAttribute("aria-pressed", ist ? "true" : "false");
+      knopf2.onclick = () => {
+        setzeErledigt(key, !karte.classList.contains("done"));
+        speichereErledigt();
+      };
     }
-    forschrittAktualisieren(karten.length);
   }
 
   // --- Anfrage an das Modell --------------------------------------------
@@ -521,6 +537,15 @@
       quelle.hidden = false;
       status.hidden = true;
       await erledigtVerwalten();
+      // Nur bei seite_fragen: Antwort + erkannte Fragen pro URL im Cache
+      // merken. So erkennen wir spaeter (auch nach einem Neuladen), ob die
+      // Fragen noch dieselben sind -> dann kein erneutes Befragen.
+      if (typ === "seite_fragen") {
+        const fragen = [...antwort.querySelectorAll(".qa")].map((el) => el.dataset.frage);
+        // Fingerabdruck = aktueller Seitentext, damit wir spaeter messen
+        // koennen, wie viel sich seit diesem Befragen auf der Seite geaendert hat.
+        await cacheSpeichern(ergebnis.antwort, fragen, normSeitentext());
+      }
     } catch (fehler) {
       status.textContent = `Fehler: ${fehler.message ?? fehler}`;
       status.hidden = false;
@@ -542,34 +567,57 @@
     if (frage) stellen("frage_stellen", frage);
   });
 
-  // --- Automatisch neu laden ---------------------------------------------
-  // Das Add-on merkt, wenn sich der Inhalt der Seite aendert (z. B. die
-  // naechste Quiz-Frage nach "Weiter") oder die URL wechselt, und fragt das
-  // Modell von selbst ab — statt jedes Mal auf "Frage beantworten" zu klicken.
+  // --- Automatisch beobachten --------------------------------------------
+  // Das Modell wird NUR befragt, wenn sich die FRAGEN auf der Seite aendern
+  // (neue Seite, naechstes Quiz, "NEXT" in einer Pruefung). Wenn der Nutzer
+  // nur eine Antwort auf der Seite markiert (Radio, "CHECK", Rueckmeldung wie
+  // "Congratulations") oder die Seite neu laedt, wird NICHT neu befragt — die
+  // passende Karte wird stattdessen automatisch als erledigt eingeklappt.
   //
-  // Drei Schutzer, damit es nicht bei jeder winzigen Aenderung feuert:
-  //   1. Debounce: erst 1 s nach der letzten Aenderung.
-  //   2. Groesse: nur wenn sich ein groesserer Textbereich geaendert hat
-  //      (eine neue Frage), nicht ein paar Zeichen (Uhr, Spinner).
-  //   3. Raten: maximal ein Neuladen alle 4 s.
-  const DEBOUNCE_MS = 1000;
-  const MIN_ABSTAND_MS = 4000;
-  const MIN_GROESSE = 20;
+  // Signal ist die Groesse der Text-Aenderung auf der SEITE seit dem letzten
+  // Befragen (nicht der Modell-Text, der unzuverlaessig ist):
+  //   - kleine Aenderung (Rueckmeldung, Timer) -> dieselbe Frage -> nur
+  //     erledigt setzen.
+  //   - grosse Aenderung (ganz neue Frage + Optionen) -> neu befragen.
+  // Nach jedem Befragen merken wir uns den Seitentext (Fingerabdruck) pro URL
+  // im Cache. Der manuelle Knopf "Frage beantworten" fragt IMMER neu.
+  const DEBOUNCE_MS = 900;
+  const MIN_REFETCH_MS = 3000; // Schutz gegen Re-Query-Schleifen
   const START_VERZOEGERUNG_MS = 1500;
+  // Darunter gilt die Aenderung als "dieselbe Frage" (Rueckmeldung/Timer);
+  // drueber als "neue Frage" (Frage + Optionen wurden ersetzt).
+  const KLEIN_SCHWELLE = 100;
+
+  // Typische Quiz-Rueckmeldungen nach dem Pruefen einer Antwort. Bewusst als
+  // Wortgruppen, damit Antwortoptionen mit "correct" o. a. nicht treffen.
+  const FEEDBACK =
+    /(congratulations|that was the (right|wrong) answer|correct answer|wrong answer|nice work|well done|correct!|incorrect|richtige antwort|falsche antwort|leider falsch)/i;
 
   let autoTimer = null;
-  let letztesNeuladen = 0;
+  let letzterRefetch = 0;
   let letzteUrl = location.href;
-  // Startzustand merken, damit der Beobachter nicht auf das eigene Laden feuert.
-  let letzterFingerabdruck = (document.body?.innerText ?? "").replace(/\s+/g, " ").trim();
 
-  function fingerabdruck() {
-    // Sichtbarer Text, Leerraum normalisiert — stabil genug zum Vergleichen.
-    return (document.body?.innerText ?? "").replace(/\s+/g, " ").trim();
+  // --- Cache pro URL -----------------------------------------------------
+  // { text: rohe Modell-Antwort, fragen: [Frage-Schluessel], fp: Seitentext,
+  //   zeit }
+  async function cacheLaden() {
+    const c = (await browser.storage.local.get("cache")).cache ?? {};
+    return c[location.href] ?? null;
+  }
+  async function cacheSpeichern(text, fragen, fp) {
+    const c = (await browser.storage.local.get("cache")).cache ?? {};
+    c[location.href] = { text, fragen, fp, zeit: Date.now() };
+    await browser.storage.local.set({ cache: c });
   }
 
-  // Groesse des geaenderten Textbereichs: laenge des Mittelstuecks, das sich
-  // zwischen zwei Fingerabdruecken unterscheidet (Praefix/Suffix ausgeklammert).
+  function normSeitentext() {
+    return (document.body?.innerText ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+  }
+
+  // Groesse des geaenderten Textbereichs zwischen zwei Seitentexten: laenge
+  // des Mittelstuecks, das sich unterscheidet (gemeinsames Praefix und Suffix
+  // ausgeklammert). Ein Timer-Tick sind ~1 Zeichen, eine neue Frage (Frage +
+  // Optionen) hunderte.
   function aenderungsgroesse(a, b) {
     if (a === b) return 0;
     const laengeA = a.length, laengeB = b.length;
@@ -581,43 +629,117 @@
     return Math.max(laengeA, laengeB) - vorne - hinten;
   }
 
-  async function autoNeuladen(zwang) {
+  // Stabile Signatur einer Frage: erste Woerter, unempfindlich gegen
+  // Ueberschreibungen am Ende oder leicht geaenderte Formulierungen.
+  function signatur(key) {
+    return key.split(/\s+/).filter(Boolean).slice(0, 6).join(" ");
+  }
+
+  // Welche gemerkten Fragen haben auf der Seite eine Rueckmeldung?
+  function erkennBeantwortet(fragen, text) {
+    const neu = new Set();
+    if (!fragen.length) return neu;
+    const pos = fragen
+      .map((key) => ({ key, idx: text.indexOf(signatur(key)) }))
+      .filter((p) => p.idx !== -1)
+      .sort((a, b) => a.idx - b.idx);
+    for (let i = 0; i < pos.length; i++) {
+      const ende = i + 1 < pos.length ? pos[i + 1].idx : text.length;
+      if (FEEDBACK.test(text.slice(pos[i].idx, ende))) neu.add(pos[i].key);
+    }
+    return neu;
+  }
+
+  // Gedebounced Pruefung nach einer Seiten-Aenderung.
+  async function autoPruefen() {
     const e = await browser.storage.local.get(["auto_neu", "api_key"]);
     if (!e.auto_neu || !e.api_key || beantwortenKnopf.disabled) return;
-    const jetzt = Date.now();
-    if (jetzt - letztesNeuladen < MIN_ABSTAND_MS) return;
-    if (!zwang) {
-      const neu = fingerabdruck();
-      const groesse = aenderungsgroesse(letzterFingerabdruck, neu);
-      letzterFingerabdruck = neu;
-      if (groesse < MIN_GROESSE) return;
+
+    const cache = await cacheLaden();
+    if (!cache || !cache.fp) return; // nichts gemerkt -> warten auf Start/Klick
+
+    const text = normSeitentext();
+    const aenderung = aenderungsgroesse(cache.fp, text);
+
+    // Grosse Aenderung: neue Frage -> neu befragen.
+    if (aenderung >= KLEIN_SCHWELLE) {
+      if (Date.now() - letzterRefetch < MIN_REFETCH_MS) return;
+      letzterRefetch = Date.now();
+      stellen("seite_fragen");
+      return;
     }
-    letztesNeuladen = jetzt;
+
+    // Kleine Aenderung: dieselbe Frage. Nur NEU beantwortete Fragen erledigt
+    // markieren (z. B. nach "CHECK").
+    const neu = erkennBeantwortet(cache.fragen, text);
+    let geaendert = false;
+    for (const key of neu) {
+      const karte = [...antwort.querySelectorAll(".qa")].find((el) => el.dataset.frage === key);
+      if (karte && !karte.classList.contains("done")) {
+        setzeErledigt(key, true);
+        geaendert = true;
+      }
+    }
+    if (geaendert) speichereErledigt();
+  }
+
+  // Beim Oeffnen / nach URL-Wechsel: wenn die Seite (nahezu) gleich ist wie
+  // beim letzten Befragen, die Antwort aus dem Cache zeigen (kein Re-Query).
+  // Sonst neu befragen.
+  async function autoStart() {
+    const e = await browser.storage.local.get(["auto_neu", "api_key"]);
+    if (!e.auto_neu || !e.api_key || beantwortenKnopf.disabled) return;
+
+    const cache = await cacheLaden();
+    if (cache && cache.fp && aenderungsgroesse(cache.fp, normSeitentext()) < KLEIN_SCHWELLE) {
+      antwort.innerHTML = renderAntwort(cache.text);
+      quelle.textContent = `Quelle: ${document.title}`;
+      quelle.hidden = false;
+      await erledigtVerwalten();
+      return;
+    }
     stellen("seite_fragen");
   }
 
-  // In-Page-Aenderungen (z. B. "Weiter" im Quiz) beobachten. Das Panel selbst
-  // liegt im Shadow-DOM und loest den Beobachter nicht aus.
+  // In-Page-Aenderungen beobachten. Das Panel liegt im Shadow-DOM und loest
+  // den Beobachter nicht aus. attributes: viele Quiz-Seiten wechseln Fragen
+  // nur per CSS-Klasse oder Inline-Style (die Knoten bleiben gleich) — das
+  // feuert nur mit attributeFilter.
   const beobachter = new MutationObserver(() => {
     if (autoTimer) clearTimeout(autoTimer);
-    autoTimer = setTimeout(() => autoNeuladen(false), DEBOUNCE_MS);
+    autoTimer = setTimeout(autoPruefen, DEBOUNCE_MS);
   });
-  beobachter.observe(document.body, { childList: true, subtree: true, characterData: true });
+  beobachter.observe(document.body, {
+    childList: true, subtree: true, characterData: true,
+    attributes: true, attributeFilter: ["class", "style", "hidden"],
+  });
 
-  // URL-Wechsel: pushState/replaceState feuert kein Event, daher kurz abfragen.
+  // Sicherheitsnetz: Manche Seiten tauschen Fragen so aus, dass kein
+  // Mutation-Event ankommt (reine Style-Wechsel, Aenderungen aus Web-Workers
+  // o. a.). Alle 2 s vergleichen wir den SICHTBAREN Text mit dem letzten
+  // Stand. innerText zahlt nur sichtbare Elemente — ausgeblendete Fragen
+  // bleiben draussen. Kleine Aenderungen (Timer-Tick ~1 Zeichen) ignorieren
+  // wir, damit das nicht bei jedem Tick feuert.
+  let letzterSichtbar = normSeitentext();
+  setInterval(() => {
+    const fp = normSeitentext();
+    const diff = aenderungsgroesse(letzterSichtbar, fp);
+    letzterSichtbar = fp;
+    if (diff > 5) autoPruefen();
+  }, 2000);
+
+  // URL-Wechsel: pushState/replaceState feuert kein Event, daher abfragen.
   const urlPruefen = () => {
     if (location.href !== letzteUrl) {
       letzteUrl = location.href;
-      autoNeuladen(true);
+      letzterRefetch = Date.now();
+      autoStart();
     }
   };
   window.addEventListener("popstate", urlPruefen);
   window.addEventListener("hashchange", urlPruefen);
   setInterval(urlPruefen, 800);
 
-  // Einmalig beim Oeffnen: kurz warten, bis die Seite steht, dann automatisch
-  // die Frage beantworten — ohne Klick. Das Raten-Limit ist zu diesem Zeitpunkt
-  // noch offen (letztesNeuladen = 0), es sei denn, der Beobachter hat schon
-  // geladen — dann ueberlaesst es das dem.
-  setTimeout(() => autoNeuladen(true), START_VERZOEGERUNG_MS);
+  // Einmalig beim Oeffnen: kurz warten, bis die Seite steht, dann starten.
+  setTimeout(autoStart, START_VERZOEGERUNG_MS);
 })();
