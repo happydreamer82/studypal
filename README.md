@@ -13,6 +13,8 @@ Nichts zu bauen — plain HTML/JS/CSS, kein npm.
 3. Auf eine Webseite gehen: oben rechts erscheint die türkis leuchtende
    LED
 4. Knopf klicken → Panel oeffnet sich rechts
+   (alternativ **Alt+Shift+S** — oeffnet/schliesst das Panel auch, wenn die
+   Seite den Knopf verdeckt)
 5. Im Panel unter **Einstellungen** den API-Key eintragen
    (aus `~/agenthub/config/agent-keys.env`) und speichern
 6. **"Frage beantworten"** klicken — das Modell findet die Frage(n), die

@@ -371,15 +371,19 @@
       const zeilen = block.split("\n").filter((z) => z.trim() !== "");
       if (zeilen.length === 0) continue;
 
-      const fi = zeilen.findIndex((z) => /^\*\*\s*Frage/i.test(z));
-      const ai = zeilen.findIndex((z) => /^\*\*\s*Antwort/i.test(z));
+      // Frage-/Antwort-Zeilen erkennen — mit oder ohne fette **Markierung**
+      // und mit oder ohne Doppelpunkt. Das Modell liefert beides (nicht
+      // deterministisch), daher tolerant matchen, damit die Karte nicht mal
+      // so, mal anders rendert.
+      const fi = zeilen.findIndex((z) => /^\*{0,2}\s*Frage\b/i.test(z));
+      const ai = zeilen.findIndex((z) => /^\*{0,2}\s*Antwort\b/i.test(z));
       if (fi !== -1 && ai !== -1 && ai >= fi) {
-        const f = zeilen[fi].replace(/^\*\*\s*Frage[^*]*\*\*\s*:?\s*/i, "");
+        const f = zeilen[fi].replace(/^\*{0,2}\s*Frage\b\s*:?\s*\*{0,2}\s*/i, "");
         // Die Antwort darf ueber mehrere Zeilen reichen; alles nach der
         // Antwort-Zeile gehoert dazu.
         const a = zeilen
           .slice(ai)
-          .map((z, i) => (i === 0 ? z.replace(/^\*\*\s*Antwort[^*]*\*\*\s*:?\s*/i, "") : z))
+          .map((z, i) => (i === 0 ? z.replace(/^\*{0,2}\s*Antwort\b\s*:?\s*\*{0,2}\s*/i, "") : z))
           .join("\n");
         out.push(qaKarte(f, a));
         continue;
@@ -421,6 +425,30 @@
   // --- Panel oeffnen / schliessen ---------------------------------------
   knopf.addEventListener("click", () => (panel.hidden = !panel.hidden));
   schliessen.addEventListener("click", () => (panel.hidden = true));
+
+  // Tastenkuerzel: Alt+Shift+S oeffnet/schliesst das Panel — auch wenn die
+  // Seite den Knopf verdeckt. Beim Umschalten wird der Host ans Ende des
+  // Body gezogen: Seiten, die spaeter eigene fixed-Elemente mit maximalem
+  // z-index einfuegen, sonst in der DOM-Reihenfolge ueber uns liegen.
+  const TASTEN_KUERZEL = { alt: true, shift: true, buchstabe: "s" };
+  window.addEventListener(
+    "keydown",
+    (e) => {
+      if (
+        e.altKey === TASTEN_KUERZEL.alt &&
+        e.shiftKey === TASTEN_KUERZEL.shift &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        e.key.toLowerCase() === TASTEN_KUERZEL.buchstabe
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        host.parentNode.appendChild(host);
+        panel.hidden = !panel.hidden;
+      }
+    },
+    true
+  );
 
   // --- Einstellungen laden ----------------------------------------------
   browser.storage.local.get(STANDARD).then((e) => {
@@ -722,6 +750,12 @@
   // wir, damit das nicht bei jedem Tick feuert.
   let letzterSichtbar = normSeitentext();
   setInterval(() => {
+    // SPA-Abwehr: Wenn die Seite nach uns eigene (fixed-)Elemente ins DOM
+    // gesetzt hat, liegen wir in der Reihenfolge unter ihr und werden
+    // verdeckt. Dann den Host neu ans Ende ziehen. Nur wenn noetig, damit
+    // das den Seitenfluss nicht staendig stoert.
+    if (host.nextSibling) host.parentNode.appendChild(host);
+
     const fp = normSeitentext();
     const diff = aenderungsgroesse(letzterSichtbar, fp);
     letzterSichtbar = fp;
