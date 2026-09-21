@@ -1,4 +1,4 @@
-# AGENTS.md — Assistent (Verzeichnis: seitenfrager)
+# AGENTS.md — StudyPal
 
 Wird von opencode jedem Request vorangestellt. Kurz halten: was hier steht,
 wird bei jedem Zug mitbezahlt.
@@ -38,4 +38,4 @@ curl -s http://127.0.0.1:4000/v1/models -H "Authorization: Bearer <key>"
 
 Das Add-on selbst laeuft nur in Firefox: `about:debugging#/runtime/this-firefox`
 → "Zuegiges Add-on laden" → `manifest.json` waehlen. Auf einer Webseite erscheint
-oben rechts die türkis leuchtende LED (Knopf "Assistent oeffnen").
+oben rechts die türkis leuchtende LED (Knopf "StudyPal oeffnen").

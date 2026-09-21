@@ -31,7 +31,7 @@
 
   // --- Geruest: Host-Element + Shadow-DOM --------------------------------
   const host = document.createElement("div");
-  host.id = "assistent-host";
+  host.id = "studypal-host";
   // Inline-Styles, damit sie gegen Seiten-CSS gewinnen (außer !important).
   host.style.position = "fixed";
   host.style.top = "0";
@@ -255,7 +255,7 @@
   `;
 
   const html = `
-    <button class="knopf" title="Assistent oeffnen" aria-label="Assistent oeffnen">
+    <button class="knopf" title="StudyPal oeffnen" aria-label="StudyPal oeffnen">
       <span class="led"></span>
     </button>
 
@@ -263,7 +263,7 @@
       <div class="kopf">
         <div class="kopf-titel">
           <span class="eyebrow">Lokales Modell</span>
-          <h1>Assistent</h1>
+          <h1>StudyPal</h1>
         </div>
         <button class="schliessen" title="Schliessen" aria-label="Schliessen">✕</button>
       </div>

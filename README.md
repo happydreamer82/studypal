@@ -1,4 +1,4 @@
-# Assistent (Verzeichnis: seitenfrager)
+# StudyPal
 
 Firefox-Add-on: Die Frage(n), die auf einer Webseite stehen (z. B. ein
 Quiz), werden vom lokalen Modell gefunden und beantwortet — die Antwort
