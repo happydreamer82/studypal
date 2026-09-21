@@ -23,6 +23,13 @@ browser.runtime.onMessage.addListener((nachricht) => {
   if (nachricht?.type === "frage_stellen") return frageStellen(nachricht.frage, nachricht.seite);
 });
 
+// Toolbar-Button: schaltet das Panel in der Seite an/aus. Das Panel bleibt
+// in der Seite (dauerhaft, Auto-Markieren laeuft weiter) — der Button ist
+// nur ein zweiter Weg dorthin, der nie von der Seite verdeckt wird.
+browser.action.onClicked.addListener((tab) => {
+  browser.tabs.sendMessage(tab.id, { type: "panel_umschalten" }).catch(() => {});
+});
+
 // Die Frage(n) auf der Seite finden und beantworten. Die Antwort kann
 // sowohl im Seiteninhalt stehen als auch aus dem Wissen des Modells
 // kommen — eine Kursseite zeigt oft nur die Quiz-Frage, nicht die Lektion.

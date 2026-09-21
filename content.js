@@ -439,6 +439,15 @@
     }
   }
 
+  // Toolbar-Button des Add-ons: schaltet das Panel wie der Knopf auf der
+  // Seite — ueberlebt auch, wenn die Seite den Knopf verdeckt hat.
+  browser.runtime.onMessage.addListener((nachricht) => {
+    if (nachricht?.type === "panel_umschalten") {
+      hostSichern();
+      panel.hidden = !panel.hidden;
+    }
+  });
+
   // Tastenkuerzel: Alt+Shift+S oeffnet/schliesst das Panel — auch wenn die
   // Seite den Knopf verdeckt oder entfernt hat.
   const TASTEN_KUERZEL = { alt: true, shift: true, buchstabe: "s" };
