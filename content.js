@@ -79,6 +79,14 @@
       }
       button.haupt:disabled { opacity: 0.6; cursor: wait; }
 
+      .knopfleiste { display: flex; gap: 8px; }
+      .knopfleiste .haupt { flex: 1; }
+      button.neben {
+        padding: 8px; border: 1px solid #8884; border-radius: 6px;
+        font: inherit; background: #fff; color: #222; cursor: pointer;
+      }
+      button.neben:disabled { opacity: 0.6; cursor: wait; }
+
       .status { font-size: 13px; opacity: 0.8; margin: 0; }
       .status[hidden] { display: none; }
 
@@ -109,7 +117,11 @@
 
       <form class="frage">
         <textarea rows="3" placeholder="Frage zur aktuellen Seite, z. B. 'Was kostet das Angebot?'" required></textarea>
-        <button class="haupt" type="submit">Fragen</button>
+        <div class="knopfleiste">
+          <button class="haupt" type="submit">Fragen</button>
+          <button class="neben" type="button"
+            title="Seite ohne eigene Frage zusammenfassen">Zusammenfassen</button>
+        </div>
       </form>
 
       <p class="status" hidden></p>
@@ -185,12 +197,14 @@
   }
 
   // --- Frage stellen -----------------------------------------------------
-  frageFormular.addEventListener("submit", async (ereignis) => {
-    ereignis.preventDefault();
-    const frage = frageFeld.value.trim();
-    if (!frage) return;
+  // Beide Wege nutzen denselben Ablauf: Seite lesen, an den Hintergrund
+  // schicken, Antwort anzeigen. "Zusammenfassen" stellt nur eine feste
+  // Frage, damit man nichts tippen muss.
+  const zusammenfassenKnopf = shadow.querySelector("button.neben");
 
+  async function stellen(frage) {
     sendenKnopf.disabled = true;
+    zusammenfassenKnopf.disabled = true;
     antwort.textContent = "";
     quelle.hidden = true;
     status.textContent = "Seite wird gelesen und das Modell befragt …";
@@ -211,6 +225,17 @@
       status.hidden = false;
     } finally {
       sendenKnopf.disabled = false;
+      zusammenfassenKnopf.disabled = false;
     }
+  }
+
+  frageFormular.addEventListener("submit", (ereignis) => {
+    ereignis.preventDefault();
+    const frage = frageFeld.value.trim();
+    if (frage) stellen(frage);
+  });
+
+  zusammenfassenKnopf.addEventListener("click", () => {
+    stellen("Fasse den Inhalt dieser Webseite in wenigen, klaren Sätzen zusammen.");
   });
 })();

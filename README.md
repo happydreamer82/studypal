@@ -13,7 +13,8 @@ Nichts zu bauen — plain HTML/JS/CSS, kein npm.
 4. Knopf klicken → Panel oeffnet sich rechts
 5. Im Panel unter **Einstellungen** den API-Key eintragen
    (aus `~/agenthub/config/agent-keys.env`) und speichern
-6. Frage eingeben, "Fragen" klicken
+6. Frage eingeben und "Fragen" klicken — oder einfach "Zusammenfassen"
+   klicken, dann fasst das Modell die Seite ohne eigene Frage zusammen
 
 Der Key wird nur im `browser.storage.local` von Firefox gehalten,
 nie im Code.
