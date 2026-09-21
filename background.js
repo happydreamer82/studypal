@@ -29,13 +29,19 @@ async function frageStellen(frage, seite) {
 }
 
 async function modellFragen(einstellungen, seite, frage) {
+  // Frage zuerst und explizit "direkt beantworten, nicht beschreiben":
+  // hinter einem langen Inhalt-Block am Ende verliert das Modell (ohne
+  // Thinking) gern den Fokus und fasst die Seite zusammen, statt zu antworten.
   const system =
-    "Du beantwortest Fragen zum Inhalt der aktuellen Webseite. " +
-    "Halte dich an den angegebenen Inhalt, erfinde nichts hinzu und antworte auf Deutsch.";
+    "Du beantwortest eine konkrete Frage zum Inhalt einer Webseite. " +
+    "Antworte direkt und knapp auf die gestellte Frage — beschreibe nicht " +
+    "die Seite oder ihren Typ. Halte dich strikt an den angegebenen Inhalt " +
+    "und erfinde nichts hinzu. Steht die Antwort nicht im Inhalt, sage das " +
+    "in einem Satz. Antworte auf Deutsch.";
   const nutzer =
+    `Frage: ${frage}\n\n` +
     `Webseite: ${seite.titel} (${seite.url})\n\n` +
-    `Inhalt:\n${seite.text}\n\n` +
-    `Frage: ${frage}`;
+    `Inhalt:\n${seite.text}`;
 
   const antwort = await fetch(`${einstellungen.basis_url}/chat/completions`, {
     method: "POST",
