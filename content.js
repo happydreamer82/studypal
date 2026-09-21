@@ -426,16 +426,24 @@
   knopf.addEventListener("click", () => (panel.hidden = !panel.hidden));
   schliessen.addEventListener("click", () => (panel.hidden = true));
 
-  // Host sicherstellen: Falls die Seite ihn aus dem DOM ENTFERNT hat (viele
-  // SPAs raeumen fremde Knoten weg), neu anhaengen. Falls neue Elemente
-  // HINTER ihm liegen (in der Reihenfolge ueber uns), ans Ende ziehen.
+  // Host sicherstellen, damit er sichtbar bleibt. Zwei Probleme:
+  //   1. SPA raeumt fremde Knoten weg -> neu anhaengen.
+  //   2. VOLLBILD: Die Pruefung ruft die Fullscreen-API auf. Im Vollbild
+  //      rendert der Browser NUR das Vollbild-Element und seine KINDER —
+  //      Geschwister (wie unser Host am Body) verschwinden. Deshalb den Host
+  //      im Vollbild als Kind VON diesem Element legen, sonst am Body.
   // Ohne die parentNode-Pruefung wirft beides einen Fehler, wenn der Host
   // losgeloescht ist — dann waere das Panel fuer immer weg.
   function hostSichern() {
-    if (!host.parentNode) {
-      (document.body ?? document.documentElement).appendChild(host);
+    const ziel =
+      document.fullscreenElement ||
+      (document.body ?? document.documentElement);
+    if (host.parentNode !== ziel) {
+      ziel.appendChild(host);
     } else if (host.nextSibling) {
-      host.parentNode.appendChild(host);
+      // Neue Elemente hinter uns -> ans Ende ziehen, dass sie uns nicht
+      // in der Reihenfolge ueberdecken.
+      ziel.appendChild(host);
     }
   }
 
@@ -761,6 +769,11 @@
     childList: true, subtree: true, characterData: true,
     attributes: true, attributeFilter: ["class", "style", "hidden"],
   });
+
+  // Vollbild-Wechsel (z. B. "Start test" in einer Pruefung): sofort den Host
+  // neu einlagern — im Vollbild muss er Kind des Vollbild-Elements sein,
+  // sonst rendert der Browser ihn nicht.
+  document.addEventListener("fullscreenchange", hostSichern);
 
   // Sicherheitsnetz: Manche Seiten tauschen Fragen so aus, dass kein
   // Mutation-Event ankommt (reine Style-Wechsel, Aenderungen aus Web-Workers
